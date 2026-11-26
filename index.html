@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rekap Aspirasi & Usulan Masyarakat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
+  </style>
+</head>
+<body class="text-slate-800 antialiased pb-12">
+
+  <!-- Header -->
+  <header class="bg-slate-900 text-white sticky top-0 z-10 shadow-md">
+    <div class="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
+      <div>
+        <span class="text-[11px] uppercase tracking-wider text-amber-400 font-semibold block">DPRD Kab. Kutai Kartanegara</span>
+        <h1 class="text-lg font-bold leading-tight">Input Aspirasi & Usulan</h1>
+      </div>
+      <div class="h-9 w-9 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 font-bold text-sm">
+        DPRD
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Form -->
+  <main class="max-w-lg mx-auto px-4 mt-5">
+    <form id="usulanForm" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-4">
+      
+      <!-- Kecamatan & Desa -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">Kecamatan *</label>
+          <select id="kecamatan" required
+            class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none bg-white">
+            <option value="">-- Pilih Kecamatan --</option>
+            <option value="Sebulu">Sebulu</option>
+            <option value="Tenggarong Seberang">Tenggarong Seberang</option>
+            <option value="Muara Kaman">Muara Kaman</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">Desa *</label>
+          <select id="desa" required disabled
+            class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none bg-slate-100 disabled:text-slate-400">
+            <option value="">-- Pilih Kecamatan Dulu --</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Lokasi Spesifik -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">RT / Dusun / Lokasi Spesifik</label>
+        <input type="text" id="lokasi" placeholder="Contoh: RT 04 Dusun Sumber Rejeki / Jl. Poros..."
+          class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none">
+      </div>
+
+      <!-- Uraian Usulan -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">Detail / Uraian Usulan *</label>
+        <textarea id="uraian" rows="5" required placeholder="Tuliskan detail usulan, nama pengusul (jika ada), atau keterangan tambahan..."
+          class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none"></textarea>
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" id="submitBtn"
+        class="w-full bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-semibold py-3.5 rounded-xl shadow-sm transition flex items-center justify-center gap-2 text-sm">
+        <span>Simpan Usulan</span>
+      </button>
+
+    </form>
+
+    <!-- Riwayat Input Terakhir di HP ini -->
+    <div id="historySection" class="mt-6 hidden">
+      <div class="flex items-center justify-between mb-2 px-1">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Baru Saja Diinput</h2>
+        <button type="button" id="clearHistory" class="text-[11px] text-rose-600 hover:underline">Bersihkan</button>
+      </div>
+      <div id="historyList" class="space-y-2"></div>
+    </div>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-white transition-all"></div>
+
+  <script>
+    // GANTI URL DI BAWAH INI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFDtJBVpmexKtsv9RYwmFgWQQPBYXuObg9vpfIeU_E-i1e5e5UfbJNPiV3EQHkIZGW9w/exec";
+
+    const dataWilayah = {
+      "Sebulu": [
+        "Beloro", "Giri Agung", "Lekaq Kidau", "Manunggal Daya", "Mekar Jaya",
+        "Sanggulan", "Sebulu Ilir", "Sebulu Modern", "Sebulu Ulu", "Segihan",
+        "Selerong", "Senoni", "Sumber Sari", "Tanjung Harapan"
+      ],
+      "Tenggarong Seberang": [
+        "Bangun Rejo", "Bhuana Jaya", "Bukit Pariaman", "Bukit Raya", "Embalut",
+        "Karang Tunggal", "Kertabuana", "Loa Lepu", "Loa Pari", "Loa Raya",
+        "Loa Ulung", "Manunggal Jaya", "Mulawarman", "Perjiwa", "Separi",
+        "Sukamaju", "Tanjung Batu", "Teluk Dalam"
+      ],
+      "Muara Kaman": [
+        "Benua Puhun", "Bukit Jering", "Bunga Jadi", "Cipari Makmur", "Kupang Baru",
+        "Lebaho Ulaq", "Liang Buaya", "Menamang Kanan", "Menamang Kiri", "Muara Kaman Ilir",
+        "Muara Kaman Ulu", "Muara Siran", "Panca Jaya", "Puan Cepak", "Rantau Hempang",
+        "Sabintulung", "Sedulang", "Sido Mukti", "Teratak", "Tunjungan"
+      ]
+    };
+
+    const kecamatanSelect = document.getElementById("kecamatan");
+    const desaSelect = document.getElementById("desa");
+    const form = document.getElementById("usulanForm");
+    const submitBtn = document.getElementById("submitBtn");
+
+    kecamatanSelect.addEventListener("change", function() {
+      const kec = this.value;
+      desaSelect.innerHTML = "";
+      
+      if (!kec) {
+        desaSelect.disabled = true;
+        desaSelect.classList.add("bg-slate-100");
+        desaSelect.innerHTML = '<option value="">-- Pilih Kecamatan Dulu --</option>';
+        return;
+      }
+
+      desaSelect.disabled = false;
+      desaSelect.classList.remove("bg-slate-100");
+      desaSelect.classList.add("bg-white");
+
+      const defaultOpt = document.createElement("option");
+      defaultOpt.value = "";
+      defaultOpt.textContent = "-- Pilih Desa --";
+      desaSelect.appendChild(defaultOpt);
+
+      dataWilayah[kec].forEach(desa => {
+        const opt = document.createElement("option");
+        opt.value = desa;
+        opt.textContent = desa;
+        desaSelect.appendChild(opt);
+      });
+    });
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.className = `fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-white transition-all ${isError ? 'bg-rose-600' : 'bg-emerald-600'}`;
+      toast.classList.remove("hidden");
+      setTimeout(() => toast.classList.add("hidden"), 3500);
+    }
+
+    function renderHistory() {
+      const history = JSON.parse(localStorage.getItem("riwayat_usulan_dprd") || "[]");
+      const section = document.getElementById("historySection");
+      const list = document.getElementById("historyList");
+      
+      if (history.length === 0) {
+        section.classList.add("hidden");
+        return;
+      }
+
+      section.classList.remove("hidden");
+      list.innerHTML = history.map(item => `
+        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 text-xs shadow-sm">
+          <div class="flex justify-between font-bold text-slate-800 mb-1">
+            <span>Desa ${item.desa} (${item.kecamatan})</span>
+            <span class="text-emerald-600 font-semibold">✓ Tersimpan</span>
+          </div>
+          ${item.lokasi ? `<div class="text-[11px] font-medium text-slate-500 mb-1">Lokasi: ${item.lokasi}</div>` : ''}
+          <p class="text-slate-600 line-clamp-2">${item.uraian}</p>
+          <div class="text-[10px] text-slate-400 mt-1.5">Pukul ${item.waktu} WITA</div>
+        </div>
+      `).join("");
+    }
+
+    document.getElementById("clearHistory").addEventListener("click", () => {
+      localStorage.removeItem("riwayat_usulan_dprd");
+      renderHistory();
+    });
+
+    form.addEventListener("submit", async function(e) {
+      e.preventDefault();
+
+      if (SCRIPT_URL === "PASTE_URL_GOOGLE_APPS_SCRIPT_DISINI") {
+        showToast("URL Apps Script belum dipasang!", true);
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Mengirim...</span>`;
+
+      const payload = {
+        kecamatan: kecamatanSelect.value,
+        desa: desaSelect.value,
+        lokasi: document.getElementById("lokasi").value.trim(),
+        uraian: document.getElementById("uraian").value.trim()
+      };
+
+      try {
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+
+        const history = JSON.parse(localStorage.getItem("riwayat_usulan_dprd") || "[]");
+        history.unshift({
+          ...payload,
+          waktu: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+        });
+        localStorage.setItem("riwayat_usulan_dprd", JSON.stringify(history.slice(0, 5)));
+        renderHistory();
+
+        showToast("Usulan berhasil disimpan!");
+        
+        // Kecamatan & Desa tetap dipertahankan untuk input beruntun di lokasi yang sama
+        document.getElementById("lokasi").value = "";
+        document.getElementById("uraian").value = "";
+
+      } catch (err) {
+        showToast("Gagal mengirim. Periksa koneksi internet.", true);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<span>Simpan Usulan</span>`;
+      }
+    });
+
+    renderHistory();
+  </script>
+</body>
+</html>
