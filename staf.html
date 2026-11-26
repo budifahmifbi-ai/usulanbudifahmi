@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel Staf - Rekap Aspirasi DPRD Kukar</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- SheetJS untuk export langsung ke file Excel (.xlsx) rapi -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -88,7 +87,7 @@
       <p class="text-sm text-slate-500">Mengambil data dari Spreadsheet...</p>
     </div>
 
-    <!-- Daftar Usulan (Tampilan Kartu Responsif untuk HP & Desktop) -->
+    <!-- Daftar Usulan -->
     <div id="dataContainer" class="space-y-3 hidden"></div>
 
   </main>
@@ -97,8 +96,8 @@
   <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-white"></div>
 
   <script>
-    // GUNAKAN URL WEB APP GOOGLE APPS SCRIPT YANG SAMA DENGAN index.html
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFDtJBVpmexKtsv9RYwmFgWQQPBYXuObg9vpfIeU_E-i1e5e5UfbJNPiV3EQHkIZGW9w/exec";
+    // GUNAKAN URL WEB APP GOOGLE APPS SCRIPT ANDA
+    const SCRIPT_URL = "PASTE_URL_GOOGLE_APPS_SCRIPT_DISINI";
 
     let allData = [];
     let filteredData = [];
@@ -112,7 +111,7 @@
     }
 
     async function fetchData() {
-      if (SCRIPT_URL === "PASTE_URL_GOOGLE_APPS_SCRIPT_DISINI") {
+      if (SCRIPT_URL === "https://script.google.com/macros/library/d/1fTbCc8BVyrjRXNmp4ZyNXZ03BpYtYXB0ySw5_sIcVsuqPhIUnyDvqqGG/2/exec") {
         showToast("URL Apps Script belum dipasang!", true);
         return;
       }
@@ -201,23 +200,31 @@
             <p class="text-sm text-slate-800 leading-relaxed whitespace-pre-line pt-1">${item.uraian}</p>
           </div>
 
-          <!-- Tombol Aksi Status -->
+          <!-- Tombol Aksi Status & Hapus -->
           <div class="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100 gap-2 shrink-0">
             <span class="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
               ${isDone ? '✓ Sudah Dilaksanakan' : '⏳ Belum Dilaksanakan'}
             </span>
 
-            ${!isDone ? `
-              <button onclick="toggleStatus(${item.row}, 'Sudah Dilaksanakan', this)"
-                class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm transition">
-                Tandai Selesai
+            <div class="flex items-center gap-2">
+              ${!isDone ? `
+                <button onclick="toggleStatus(${item.row}, 'Sudah Dilaksanakan', this)"
+                  class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm transition">
+                  Tandai Selesai
+                </button>
+              ` : `
+                <button onclick="toggleStatus(${item.row}, 'Baru Masuk', this)"
+                  class="text-[11px] text-slate-500 hover:text-slate-800 underline px-1">
+                  Batalkan
+                </button>
+              `}
+
+              <button onclick="deleteUsulan(${item.row}, '${item.desa}', this)"
+                class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition"
+                title="Hapus Usulan">
+                Hapus
               </button>
-            ` : `
-              <button onclick="toggleStatus(${item.row}, 'Baru Masuk', this)"
-                class="text-[11px] text-slate-400 hover:text-slate-600 underline">
-                Batalkan Status
-              </button>
-            `}
+            </div>
           </div>
         </div>
         `;
@@ -241,7 +248,6 @@
           })
         });
 
-        // Update state lokal langsung agar responsif tanpa harus reload penuh
         const target = allData.find(d => d.row === rowNumber);
         if (target) target.status = newStatus;
         
@@ -253,6 +259,41 @@
         showToast("Gagal memperbarui status.", true);
         btnElement.disabled = false;
         btnElement.textContent = originalText;
+      }
+    }
+
+    async function deleteUsulan(rowNumber, namaDesa, btnElement) {
+      const yakin = confirm(`Yakin ingin menghapus usulan dari Desa ${namaDesa} ini secara permanen?`);
+      if (!yakin) return;
+
+      btnElement.disabled = true;
+      btnElement.textContent = "Menghapus...";
+
+      try {
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "deleteRow",
+            row: rowNumber
+          })
+        });
+
+        // Hapus dari daftar lokal & geser indeks baris di atasnya agar nomor baris tetap sinkron tanpa harus reload penuh
+        allData = allData.filter(d => d.row !== rowNumber).map(d => {
+          if (d.row > rowNumber) d.row -= 1;
+          return d;
+        });
+
+        updateStats();
+        applyFilter();
+        showToast("Usulan berhasil dihapus.");
+
+      } catch (err) {
+        showToast("Gagal menghapus usulan.", true);
+        btnElement.disabled = false;
+        btnElement.textContent = "Hapus";
       }
     }
 
@@ -278,7 +319,6 @@
       XLSX.writeFile(workbook, `Rekap_Usulan_DPRD_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
-    // Muat data saat halaman dibuka
     fetchData();
   </script>
 </body>
